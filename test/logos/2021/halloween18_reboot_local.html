@@ -8,33 +8,32 @@
 </head>
 <body style="text-align:center">
 <script>
-(function() {
-    const NativeWebSocket = window.WebSocket;
-
-    window.WebSocket = function(url, protocols) {
-        console.log("[GGD LOCAL] Redirecting:", url);
-
-        const ws = new NativeWebSocket("ws://localhost:8080/");
-
-        ws.binaryType = "arraybuffer";
-
-        ws.addEventListener("open", function() {
-            console.log("[GGD LOCAL] Connected!");
-            
-            // The custom server expects the original URL first.
-            ws.send(url.replace(/^wss?:\/\//, ""));
-        });
-
-        return ws;
-    };
-
-    window.WebSocket.prototype = NativeWebSocket.prototype;
-    window.WebSocket.CONNECTING = NativeWebSocket.CONNECTING;
-    window.WebSocket.OPEN = NativeWebSocket.OPEN;
-    window.WebSocket.CLOSING = NativeWebSocket.CLOSING;
-    window.WebSocket.CLOSED = NativeWebSocket.CLOSED;
+// Local Great Ghoul Duel proxy: redirect the client's WebSocket to the local server.
+(function () {
+  const NativeWebSocket = window.WebSocket;
+  function LocalWebSocket(url, protocols) {
+    console.log("[GGD LOCAL] Redirecting:", url);
+    const ws = protocols === undefined
+      ? new NativeWebSocket("ws://localhost:8080/")
+      : new NativeWebSocket("ws://localhost:8080/", protocols);
+    ws.binaryType = "arraybuffer";
+    const originalOpen = ws.onopen;
+    ws.addEventListener("open", function () {
+      console.log("[GGD LOCAL] Connected to local server");
+      const target = String(url).replace(/^wss?:\/\//, "");
+console.log("[GGD LOCAL] Sending target:", target);
+ws.send(target);
+    }, { once: true });
+    return ws;
+  }
+  LocalWebSocket.prototype = NativeWebSocket.prototype;
+  for (const key of ["CONNECTING", "OPEN", "CLOSING", "CLOSED"]) {
+    LocalWebSocket[key] = NativeWebSocket[key];
+  }
+  window.WebSocket = LocalWebSocket;
 })();
 </script>
+
 <script nonce="9d7pJrkxHNZOdjvo3yaEtA">
   window.google={};
   window.google.doodle={};
